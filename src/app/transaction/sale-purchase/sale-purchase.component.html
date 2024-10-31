@@ -1,0 +1,66 @@
+<form [formGroup]="transactionForm" (ngSubmit)="submit()">
+  <label for="date">Date:</label>
+  <input type="date" id="date" [value]="transactionForm.get('date')!.value | date:'yyyy-MM-dd'" 
+  formControlName="date" /> 
+
+  <label for="transaction">Transaction:</label>
+  <select id="transaction" formControlName="transaction">
+    <option value="" disabled>Select Transaction Type</option>
+    <option value="purchase">Purchase</option>
+    <option value="sales">Sales</option>
+    <option value="cash received">Cash Received</option>
+    <option value="cash given">Cash Given</option>
+    <option value="metal received">Metal Received</option>
+    <option value="metal given">Metal Given</option>
+    <option value="ratecut purchase">Ratecut Purchase</option>
+    <option value="ratecut sales">Ratecut Sales</option>
+  </select>
+
+  <label for="ledgerName">Ledger Name:</label>
+  <select id="ledgerName" formControlName="ledgerName">
+    <option value="" disabled>Select Ledger Name</option>
+    <option *ngFor="let ledgerName of ledgerNames" [value]="ledgerName">{{ ledgerName }} </option>
+  </select>
+
+  <div *ngIf="showField('stockName')">
+    <label for="stockName">Stock Name:</label>
+    <select id="stockName" formControlName="stockName">
+      <option value="" disabled>Select Stock Name</option>
+      <option *ngFor="let stockName of stockNames" [value]="stockName">{{ stockName }}</option>
+    </select>
+  </div>
+
+  <div *ngIf="showField('netWeight')">
+    <label for="netWeight">Net Weight:</label>
+    <input type="number" id="netWeight" formControlName="netWeight" step="0.01" />
+  </div>
+
+  <div *ngIf="showField('touch')">
+    <label for="touch">Touch:</label>
+    <input type="number" id="touch" formControlName="touch" />
+  </div>
+
+  <div *ngIf="showField('pure')">
+    <label for="pure">Pure:</label>
+    <input type="number" id="pure" formControlName="pure" readonly />
+  </div>
+
+  <div *ngIf="showField('rate')">
+    <label for="rate">Rate:</label>
+    <input type="number" id="rate" formControlName="rate" />
+  </div>
+  <div *ngIf="showField('amount')">
+    <label for="amount">Amount:</label>
+    <input type="number" id="amount" formControlName="amount" readonly />
+  </div>
+
+  <div *ngIf="showField('cash')">
+    <label for="cash">Cash:</label>
+    <input type="number" id="cash" formControlName="cash" />
+  </div>
+
+  <label for="comments">Comments:</label>
+  <textarea id="comments" formControlName="comments"></textarea>
+
+  <button type="submit">Submit</button>
+</form>

@@ -1,0 +1,41 @@
+nav {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+}
+
+li {
+  margin: 0 1rem;
+  position: relative; /* Add this to make the submenus absolute */
+}
+
+a {
+  text-decoration: none;
+  color: #007bff;
+  cursor: pointer;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+ul ul {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #f8f9fa;
+  padding: 1rem;
+  display: none;
+}
+
+li:hover > ul {
+  display: block;
+}
