@@ -45,6 +45,14 @@ export class ApiService {
     return this.http.get<Transaction[]>(`${this.apiUrl}/api/transactions`, { params });
   }
 
+  getTransactionsByName(name?: string): Observable<Transaction[]> {
+    let params = new HttpParams();
+    if (name) {
+      params = params.append('name', name);
+    }
+    return this.http.get<Transaction[]>(`${this.apiUrl}/api/transactions/name`, { params });
+  }
+
   createTransaction(transaction: Transaction): Observable<any> {
     return this.http.post(`${this.apiUrl}/api/transactions`, transaction);
   }
