@@ -1,12 +1,14 @@
+
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { NgSelectModule } from '@ng-select/ng-select';
+import { ApiService, Transaction } from '../../services/api.service';
+
 @Component({
   selector: 'app-sale-purchase',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule,NgSelectModule, HttpClientModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, NgSelectModule],
   templateUrl: './sale-purchase.component.html',
   styleUrls: ['./sale-purchase.component.scss']
 })
@@ -15,7 +17,7 @@ export class SalePurchaseComponent implements OnInit {
   ledgerNames: string[] = ['99ba'];
   stockNames: string[] = ['bar', 'pcs', 'ft', 'kachha', 'maal'];
 
-  constructor(private fb: FormBuilder, private http: HttpClient) {
+  constructor(private fb: FormBuilder, private apiService: ApiService) {
     const today = new Date().toISOString().split('T')[0];
 
     this.transactionForm = this.fb.group({
@@ -31,7 +33,6 @@ export class SalePurchaseComponent implements OnInit {
       cash: [0],
       comments: ['']
     });
-    
   }
 
   ngOnInit(): void {
@@ -40,13 +41,28 @@ export class SalePurchaseComponent implements OnInit {
   }
 
   fetchLedgerNames(): void {
-    this.http.get<string[]>('http://localhost:8080/api/Ledgers').subscribe(data => {
-  
+    this.apiService.getLedgerNames().subscribe(data => {
       this.ledgerNames = data;
     });
   }
 
-  onChanges(): void {
+  onSubmit(): void {
+    if (this.transactionForm.valid) {
+      const transaction: Transaction = this.transactionForm.value;
+      this.apiService.createTransaction(transaction).subscribe(
+        response => {
+          console.log('Transaction created successfully', response);
+          this.transactionForm.reset();
+        },
+        error => {
+          console.error('Error creating transaction', error);
+        }
+      );
+    }
+  }
+
+  // ... rest of the component code remains the same
+onChanges(): void {
     this.transactionForm.get('transaction')!.valueChanges.subscribe(transactionType => {
       this.toggleFields(transactionType);
     });
@@ -321,3 +337,4 @@ findInvalidControlsRecursive(formToInvestigate: FormGroup | any) {
     return false;
   }
 }
+

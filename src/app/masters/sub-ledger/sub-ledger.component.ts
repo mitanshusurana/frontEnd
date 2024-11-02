@@ -1,27 +1,20 @@
+
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { HttpClient, HttpClientModule } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-
-
-
-interface createCustomer {
-  customerName: string;
-  openingCashBalance: number;
-  openingMetalBalance: number;
-}
+import { ApiService, CreateCustomer } from '../../services/api.service';
 
 @Component({
   selector: 'app-sub-ledger',
   standalone: true,
-  imports :[ FormsModule , CommonModule , ReactiveFormsModule,HttpClientModule],
+  imports: [FormsModule, CommonModule, ReactiveFormsModule],
   templateUrl: './sub-ledger.component.html',
   styleUrl: './sub-ledger.component.scss'
 })
-export class SubLedgerComponent  {
+export class SubLedgerComponent {
   ledgerForm: FormGroup;
 
-  constructor(private fb: FormBuilder, private http: HttpClient) {
+  constructor(private fb: FormBuilder, private apiService: ApiService) {
     this.ledgerForm = this.fb.group({
       customerName: ['', Validators.required],
       openingCashBalance: [0], 
@@ -31,9 +24,9 @@ export class SubLedgerComponent  {
 
   onSubmit() {
     if (this.ledgerForm.valid) {
-      const newLedger: createCustomer = this.ledgerForm.value;
+      const newLedger: CreateCustomer = this.ledgerForm.value;
 
-      this.http.post('http://localhost:8080/api/Ledgers', newLedger) 
+      this.apiService.createLedger(newLedger)
         .subscribe(
           response => {
             console.log('Ledger created successfully!', response);
