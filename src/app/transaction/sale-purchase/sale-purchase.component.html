@@ -1,5 +1,5 @@
 
-<form [formGroup]="transactionForm" (ngSubmit)="onSubmit()">
+<form [formGroup]="transactionForm" (ngSubmit)="submit()">
   <label for="date">Date:</label>
   <input type="date" id="date" [value]="transactionForm.get('date')!.value | date:'yyyy-MM-dd'" 
   formControlName="date" /> 

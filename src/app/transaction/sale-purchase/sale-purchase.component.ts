@@ -46,7 +46,7 @@ export class SalePurchaseComponent implements OnInit {
     });
   }
 
-  onSubmit(): void {
+  submit(): void {
     if (this.transactionForm.valid) {
       const transaction: Transaction = this.transactionForm.value;
       this.apiService.createTransaction(transaction).subscribe(
@@ -62,6 +62,7 @@ export class SalePurchaseComponent implements OnInit {
   }
 
   // ... rest of the component code remains the same
+
 onChanges(): void {
     this.transactionForm.get('transaction')!.valueChanges.subscribe(transactionType => {
       this.toggleFields(transactionType);
