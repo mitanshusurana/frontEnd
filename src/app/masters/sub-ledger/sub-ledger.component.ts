@@ -3,11 +3,13 @@ import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ApiService, CreateCustomer } from '../../services/api.service';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-sub-ledger',
   standalone: true,
-  imports: [FormsModule, CommonModule, ReactiveFormsModule],
+  imports: [FormsModule, CommonModule, ReactiveFormsModule,HttpClientModule],
+  providers: [ApiService],
   templateUrl: './sub-ledger.component.html',
   styleUrl: './sub-ledger.component.scss'
 })

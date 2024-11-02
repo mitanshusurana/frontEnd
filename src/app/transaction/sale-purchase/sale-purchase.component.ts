@@ -1,18 +1,19 @@
-
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { ApiService, Transaction } from '../../services/api.service';
+import { HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-sale-purchase',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, NgSelectModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, NgSelectModule, HttpClientModule],
+  providers: [ApiService],
   templateUrl: './sale-purchase.component.html',
   styleUrls: ['./sale-purchase.component.scss']
 })
-export class SalePurchaseComponent implements OnInit {
+export class SalePurchaseComponent implements OnInit{
   transactionForm: FormGroup;
   ledgerNames: string[] = ['99ba'];
   stockNames: string[] = ['bar', 'pcs', 'ft', 'kachha', 'maal'];
@@ -46,20 +47,7 @@ export class SalePurchaseComponent implements OnInit {
     });
   }
 
-  submit(): void {
-    if (this.transactionForm.valid) {
-      const transaction: Transaction = this.transactionForm.value;
-      this.apiService.createTransaction(transaction).subscribe(
-        response => {
-          console.log('Transaction created successfully', response);
-          this.transactionForm.reset();
-        },
-        error => {
-          console.error('Error creating transaction', error);
-        }
-      );
-    }
-  }
+
 
   // ... rest of the component code remains the same
 
@@ -213,9 +201,9 @@ onChanges(): void {
       console.log("Data to send:", dataToSend);
       
       // Send the data to the same API endpoint
-      this.http.post<any>("http://localhost:8080/api/transactions", dataToSend)
+      this.apiService.createTransaction(dataToSend)
         .subscribe(
-          response => {
+          (          response: { ledgerName: string; }) => {
             console.log('Transaction created successfully:', response);
   
             // Trigger the next call based on transaction type
@@ -230,7 +218,7 @@ onChanges(): void {
             // Reset the form after successful submission
             this.resetForm();
           },
-          error => {
+          (          error: any) => {
             console.error('Error creating transaction:', error);
           }
         ); 
@@ -271,12 +259,12 @@ onChanges(): void {
       transaction: 'cash given' // Specify the type for clarity
     };
   
-    this.http.post<any>("http://localhost:8080/api/transactions", cashData)
+    this.apiService.createTransaction(cashData)
       .subscribe(
-        response => {
+        (        response: any) => {
           console.log('Cash given transaction created successfully:', response);
         },
-        error => {
+        (        error: any) => {
           console.error('Error creating cash given transaction:', error);
         }
       );
@@ -291,12 +279,12 @@ onChanges(): void {
       transaction: 'cash received' // Specify the type for clarity
     };
   
-    this.http.post<any>("http://localhost:8080/api/transactions", cashData)
+    this.apiService.createTransaction(cashData)
       .subscribe(
-        response => {
+        (        response: any) => {
           console.log('Cash received transaction created successfully:', response);
         },
-        error => {
+        (        error: any) => {
           console.error('Error creating cash received transaction:', error);
         }
       );
