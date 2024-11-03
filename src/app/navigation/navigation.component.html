@@ -1,7 +1,10 @@
 <nav>
-  <ul>
+  <div class="menu-toggle" (click)="toggleMenu()">
+    <span>=</span>
+  </div>
+  <ul [class.active]="isMenuOpen">
     <li (mouseenter)="showDropdown('masters')" (mouseleave)="hideDropdown()">
-      <a>Masters</a>
+      <a href="javascript:void(0)">Masters</a>
       <ul *ngIf="isDropdownOpen('masters')">
         <li><a (click)="navigateTo('/masters/main-ledger')">Main Ledger</a></li>
         <li><a (click)="navigateTo('/masters/sub-ledger')">Sub Ledger</a></li>
@@ -10,7 +13,7 @@
       </ul>
     </li>
     <li (mouseenter)="showDropdown('transactions')" (mouseleave)="hideDropdown()">
-      <a>Transaction</a>
+      <a href="javascript:void(0)">Transaction</a>
       <ul *ngIf="isDropdownOpen('transactions')">
         <li><a (click)="navigateTo('/transaction/sale-purchase')">Sale/Purchase</a></li>
         <li><a (click)="navigateTo('/transaction/receipt-delivery')">Receipt/Delivery</a></li>
@@ -20,7 +23,7 @@
       </ul>
     </li>
     <li (mouseenter)="showDropdown('reports')" (mouseleave)="hideDropdown()">
-      <a>Reports</a>
+      <a href="javascript:void(0)">Reports</a>
       <ul *ngIf="isDropdownOpen('reports')">
         <li><a (click)="navigateTo('/reports/ledger')">Ledger</a></li>
         <li><a (click)="navigateTo('/reports/party-balance')">Party Balance</a></li>

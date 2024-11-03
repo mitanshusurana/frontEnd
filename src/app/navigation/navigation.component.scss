@@ -1,41 +1,85 @@
 nav {
+  position: relative;
   background-color: #f8f9fa;
   padding: 1rem;
   display: flex;
   justify-content: space-between;
-}
 
-ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-}
+  .menu-toggle {
+    display: none;
+    cursor: pointer;
+  }
 
-li {
-  margin: 0 1rem;
-  position: relative; /* Add this to make the submenus absolute */
-}
+  ul {
+    list-style: none;
+ margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: space-between;
+  }
 
-a {
-  text-decoration: none;
-  color: #007bff;
-  cursor: pointer;
-}
+  li {
+    margin: 0 1rem;
+    position: relative;
+  }
 
-a:hover {
-  text-decoration: underline;
-}
+  a {
+    text-decoration: none;
+    color: #007bff;
+    cursor: pointer;
+  }
 
-ul ul {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background-color: #f8f9fa;
-  padding: 1rem;
-  display: none;
-}
+  ul ul {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    padding: 10px;
+    display: none;
+  }
 
-li:hover > ul {
-  display: block;
+  li:hover > ul {
+    display: block;
+  }
+
+  /* Responsive design for mobile screens */
+  @media (max-width: 768px) {
+    .menu-toggle {
+      display: block;
+    }
+
+    ul {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background-color: #f9f9f9;
+      border: 1px solid #ccc;
+      padding: 10px;
+      width: 100%;
+    }
+
+    .active {
+      display: block;
+    }
+
+    li {
+      width: 100%;
+    }
+
+    a {
+      width: 100%;
+      padding: 10px;
+      display: block;
+    }
+
+    ul ul {
+      position: relative;
+      top: 0;
+      left: 0;
+      padding: 0;
+      border: none;
+    }
+  }
 }
