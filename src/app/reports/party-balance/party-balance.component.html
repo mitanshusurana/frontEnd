@@ -1,1 +1,24 @@
-<p>party-balance works!</p>
+<table mat-table [dataSource]="partyBalance" class="mat-elevation-z8">
+
+  <!-- Party Name Column -->
+  <ng-container matColumnDef="partyName">
+    <th mat-header-cell *matHeaderCellDef> Party Name </th>
+    <td mat-cell *matCellDef="let element"> {{element.partyName}} </td>
+  </ng-container>
+
+  <!-- Metal Balance Column -->
+  <ng-container matColumnDef="metalBalance">
+    <th mat-header-cell *matHeaderCellDef> Metal Balance </th>
+    <td mat-cell *matCellDef="let element"> {{element.metalBalance}} </td>
+  </ng-container>
+
+  <!-- Cash Balance Column -->
+  <ng-container matColumnDef="cashBalance">
+    <th mat-header-cell *matHeaderCellDef> Cash Balance </th>
+    <td mat-cell *matCellDef="let element"> {{element.cashBalance}} </td>
+  </ng-container>
+
+  <!-- Header and Row Definitions -->
+  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+</table>

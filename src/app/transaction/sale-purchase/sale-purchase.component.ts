@@ -17,6 +17,7 @@ export class SalePurchaseComponent implements OnInit{
   transactionForm: FormGroup;
   ledgerNames: string[] = ['99ba'];
   stockNames: string[] = ['bar', 'pcs', 'ft', 'kachha', 'maal'];
+  datePipe: any;
 
   constructor(private fb: FormBuilder, private apiService: ApiService) {
     const today = new Date().toISOString().split('T')[0];
@@ -138,12 +139,12 @@ onChanges(): void {
 
     if (netWeight) {
       const pure = (netWeight * touch) / 100;
-      this.transactionForm.get('pure')?.setValue(pure.toFixed(2));
+      this.transactionForm.get('pure')?.setValue(pure.toFixed(3));
     }
 
     if (netWeight && rate) {
       const amount = netWeight * rate;
-      this.transactionForm.get('amount')?.setValue(amount.toFixed(2));
+      this.transactionForm.get('amount')?.setValue(amount.toFixed(3));
     }
   }
 
@@ -153,7 +154,7 @@ onChanges(): void {
 
     if (netWeight && rate) {
       const amount = netWeight * rate;
-      this.transactionForm.get('amount')?.setValue(amount.toFixed(2));
+      this.transactionForm.get('amount')?.setValue(amount.toFixed(3));
     }
   }
 
@@ -174,11 +175,16 @@ onChanges(): void {
   submit(): void {
     if (this.transactionForm.valid) {
       const formData = this.transactionForm.value;
-  
+      const dateObject = new Date(formData.date);
+
+        // Format the date to 'yyyy-MM-dd'
+        const formattedDate = dateObject.toISOString().split('T')[0]; // Ensure the date is formatted correctly
+
       // Calculate pure and amount before sending
-      const calculatedPure = (formData.netWeight * formData.touch) / 100;
+      const calculatedPure =((formData.netWeight * formData.touch) / 100);
+     
       const calculatedAmount = calculatedPure * formData.rate;
-  
+      
       // Prepare the base data to send
       let dataToSend;
   
@@ -187,14 +193,16 @@ onChanges(): void {
         const { cash, ...rest } = formData;
         dataToSend = {
           ...rest,
-          pure: calculatedPure,
-          amount: calculatedAmount
+          date: formattedDate,
+          pure: calculatedPure.toFixed(3),
+          amount: calculatedAmount.toFixed(3)
         };
       } else {
         dataToSend = {
           ...formData,
-          pure: calculatedPure,
-          amount: calculatedAmount
+          date: formattedDate,
+          pure: calculatedPure.toFixed(3),
+          amount: calculatedAmount.toFixed(3)
         };
       }
   

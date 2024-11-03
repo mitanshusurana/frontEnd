@@ -65,4 +65,8 @@ export class ApiService {
   createLedger(newLedger: CreateCustomer): Observable<any> {
     return this.http.post(`${this.apiUrl}/api/Ledgers`, newLedger);
   }
+
+  getBalances(): Observable<any> {
+    return this.http.get("http://localhost:8080/api/transactions/balances")
+  }
 }
