@@ -1,5 +1,4 @@
-
 export const environment = {
   production: false,
-  apiUrl: 'http://localhost:8080'  // Replace with your actual API URL
+  apiUrl: 'https://transactions-ju2m.onrender.com'  // Replace with your actual API URL
 };
