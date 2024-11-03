@@ -1,41 +1,29 @@
-nav {
-  background-color: #f8f9fa;
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
+.sidenav-container {
+  height: 100%;
 }
 
-ul {
-  list-style-type: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
+.sidenav {
+  width: 200px;
 }
 
-li {
-  margin: 0 1rem;
-  position: relative; /* Add this to make the submenus absolute */
+.sidenav .mat-toolbar {
+  background: inherit;
 }
 
-a {
-  text-decoration: none;
-  color: #007bff;
-  cursor: pointer;
+.mat-toolbar.mat-primary {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
-a:hover {
-  text-decoration: underline;
+.submenu {
+  overflow-y: hidden;
+  transition: transform 300ms ease;
+  transform: scaleY(0);
+  transform-origin: top;
+  padding-left: 10px;
 }
 
-ul ul {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background-color: #f8f9fa;
-  padding: 1rem;
-  display: none;
-}
-
-li:hover > ul {
-  display: block;
+.submenu.expanded {
+  transform: scaleY(1);
 }

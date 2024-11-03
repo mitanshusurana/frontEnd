@@ -1,42 +1,51 @@
-import { Component, HostBinding } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { Observable } from 'rxjs';
+import { map, shareReplay } from 'rxjs/operators';
 import { Router } from '@angular/router';
-import { RouterOutlet } from '@angular/router';
-import { SalePurchaseComponent } from '../transaction/sale-purchase/sale-purchase.component';
-import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-navigation',
   templateUrl: './navigation.component.html',
-  styleUrls: ['./navigation.component.scss'],
-  standalone: true,
-  imports: [RouterOutlet, SalePurchaseComponent,CommonModule],
+  styleUrls: ['./navigation.component.scss']
 })
-export class NavigationComponent {
-  @HostBinding('class.active') isOpen = false;
+export class NavigationComponent implements OnInit {
+  isHandset$: Observable<boolean> = this.breakpointObserver.observe(Breakpoints.Handset)
+    .pipe(
+      map(result => result.matches),
+      shareReplay()
+    );
 
-  // Track the currently open dropdown
-  openDropdown: string | null = null;
+  openSubmenus: { [key: string]: boolean } = {};
 
-  constructor(private router: Router) {}
+  constructor(
+    private breakpointObserver: BreakpointObserver,
+    private router: Router
+  ) {}
 
-  // Show dropdown on mouse enter
-  showDropdown(dropdown: string) {
-    this.openDropdown = dropdown;
+  ngOnInit() {}
+
+  showSubmenu(submenu: string) {
   }
 
-  // Hide dropdown on mouse leave
-  hideDropdown() {
-    this.openDropdown = null;
+  isSubmenuOpen(submenu: string): boolean {
+    return this.openSubmenus[submenu] || false;
   }
 
-  // Navigate to the specified route
   navigateTo(route: string) {
     this.router.navigate([route]);
-    this.openDropdown = null; // Close dropdown after navigation
+  }
+}
+
+  showSubmenu(submenu: string) {
+    this.openSubmenus[submenu] = \!this.openSubmenus[submenu];
   }
 
-  // Check if a dropdown is open
-  isDropdownOpen(dropdown: string): boolean {
-    return this.openDropdown === dropdown;
+  isSubmenuOpen(submenu: string): boolean {
+    return this.openSubmenus[submenu] || false;
+  }
+
+  navigateTo(route: string) {
+    this.router.navigate([route]);
   }
 }

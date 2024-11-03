@@ -1,4 +1,68 @@
 /* You can add global styles to this file, and also import other style files */
 
 html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+body { 
+  margin: 0; 
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Responsive typography */
+@media screen and (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+}
+
+/* Grid system */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0 -15px;
+}
+
+.col {
+  flex: 1;
+  padding: 0 15px;
+}
+
+/* Responsive grid */
+@media screen and (max-width: 768px) {
+  .col {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+}
+
+/* Utility classes */
+.text-center {
+  text-align: center;
+}
+
+.hidden-mobile {
+  display: block;
+}
+
+@media screen and (max-width: 768px) {
+  .hidden-mobile {
+    display: none;
+  }
+}
+
+.visible-mobile {
+  display: none;
+}
+
+@media screen and (max-width: 768px) {
+  .visible-mobile {
+    display: block;
+  }
+}
