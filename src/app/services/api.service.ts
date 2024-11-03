@@ -67,6 +67,6 @@ export class ApiService {
   }
 
   getBalances(): Observable<any> {
-    return this.http.get("http://localhost:8080/api/transactions/balances")
+    return this.http.get(`${this.apiUrl}/api/transactions/balances`)
   }
 }
