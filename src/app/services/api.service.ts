@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, from, of } from 'rxjs';
-import { catchError, tap, map } from 'rxjs/operators';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, from, of, throwError } from 'rxjs';
+import { catchError, tap, retry } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -40,19 +40,13 @@ export class ApiService {
   private handleRequest<T>(endpoint: string, method: string, data?: any): Observable<T> {
     if (navigator.onLine) {
       return this.http.request<T>(method, `${this.apiUrl}/${endpoint}`, { body: data }).pipe(
+        retry(3),
         tap(response => {
           if (method === 'GET') {
             this.saveToIndexedDB(endpoint, response);
           }
         }),
-        catchError(error => {
-          console.error('API error:', error);
-          if (method === 'GET') {
-            return this.getFromIndexedDB<T>(endpoint);
-          } else {
-            throw error;
-          }
-        })
+        catchError(this.handleError)
       );
     } else {
       if (method === 'GET') {
@@ -60,7 +54,7 @@ export class ApiService {
       } else if (method === 'POST') {
         return this.saveOfflineData(endpoint, data);
       } else {
-        return of(null as T);
+        return throwError('Operation not supported offline');
       }
     }
   }
@@ -73,11 +67,11 @@ export class ApiService {
 
     const transaction = this.db.transaction([storeName], 'readwrite');
     const store = transaction.objectStore(storeName);
-    store.clear();
+    
     if (Array.isArray(data)) {
-      data.forEach(item => store.add(item));
+      data.forEach(item => store.put(item));
     } else {
-      store.add(data);
+      store.put(data);
     }
   }
 
@@ -125,10 +119,12 @@ export class ApiService {
   }
 
   createTransaction(transaction: any): Observable<any> {
+    // TODO: Adapt the transaction data structure as needed before sending to the server
     return this.handleRequest<any>('transactions', 'POST', transaction);
   }
 
   createCustomer(customer: any): Observable<any> {
+    // TODO: Adapt the customer data structure as needed before sending to the server
     return this.handleRequest<any>('customers', 'POST', customer);
   }
 
@@ -138,7 +134,7 @@ export class ApiService {
 
   syncOfflineData(): Observable<any> {
     if (!navigator.onLine) {
-      return of({ message: 'Device is offline. Will sync when online.' });
+      return throwError('Device is offline. Will sync when online.');
     }
 
     return new Observable(observer => {
@@ -162,7 +158,12 @@ export class ApiService {
             }
 
             const syncPromises = offlineData.map((data: any) =>
-              this.http.post(`${this.apiUrl}/${apiEndpoint}`, data).toPromise()
+              this.http.post(`${this.apiUrl}/${apiEndpoint}`, data)
+                .pipe(
+                  retry(3),
+                  catchError(this.handleError)
+                )
+                .toPromise()
             );
 
             Promise.all(syncPromises)
@@ -189,5 +190,19 @@ export class ApiService {
           observer.error(error);
         });
     });
+  }
+
+  private handleError(error: HttpErrorResponse) {
+    let errorMessage = 'An error occurred';
+    if (error.error instanceof ErrorEvent) {
+      // Client-side error
+      errorMessage = `Error: ${error.error.message}`;
+    } else {
+      // Server-side error
+      errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
+    }
+    console.error(errorMessage);
+    // TODO: Implement user notification here (e.g., using a toast service)
+    return throwError(errorMessage);
   }
 }
