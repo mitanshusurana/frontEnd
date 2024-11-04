@@ -1,34 +1,35 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { RouterModule } from '@angular/router';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 
 import { AppComponent } from './app.component';
-import { AuthGuard } from './auth.guard';
-import { AuthService } from './auth.service';
-import { LoginComponent } from './login/login.component';
-import { NavigationComponent } from './navigation/navigation.component';
-
-import { routes } from './app.routes';
-import { MatTableModule } from '@angular/material/table';
-import { MatIconModule } from '@angular/material/icon';
+import { IndexedDBService } from './services/indexeddb.service';
+import { TransactionService } from './services/transaction.service';
+import { BackgroundSyncService } from './services/background-sync.service';
+import { LedgerCacheService } from './services/ledger-cache.service';
+import { NotificationService } from './services/notification.service';
+import { NotificationComponent } from './components/notification/notification.component';
 
 @NgModule({
   declarations: [
-    LoginComponent,
-    NavigationComponent
+    AppComponent,
+    NotificationComponent,
+    // Add other components here
   ],
   imports: [
     BrowserModule,
     HttpClientModule,
-    ReactiveFormsModule,
-    FormsModule,
-    MatTableModule,
-    MatIconModule,
-    RouterModule.forRoot(routes)
+    // Add other modules here
   ],
-  providers: [AuthGuard, AuthService],
+  providers: [
+    IndexedDBService,
+    TransactionService,
+    BackgroundSyncService,
+    LedgerCacheService,
+    NotificationService
+  ],
   bootstrap: [AppComponent]
 })
-export class AppModule { }
+export class AppModule {
+  constructor(private backgroundSyncService: BackgroundSyncService) {}
+}

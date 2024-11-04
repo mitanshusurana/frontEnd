@@ -1,13 +1,29 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
+import { NotificationService } from './services/notification.service';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
-  imports: [RouterOutlet],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+  styleUrls: ['./app.component.scss']
 })
-export class AppComponent {
-  title = 'suranagems';
+export class AppComponent implements OnInit {
+  isOnline: boolean = navigator.onLine;
+
+  constructor(private notificationService: NotificationService) {}
+
+  ngOnInit() {
+    this.setupNetworkListeners();
+  }
+
+  private setupNetworkListeners() {
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      this.notificationService.showNotification('You are back online!', 'success');
+    });
+
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+      this.notificationService.showNotification('You are offline. Changes will be synced when you\'re back online.', 'info');
+    });
+  }
 }
