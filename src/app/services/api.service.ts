@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
 import { Observable, from, of, throwError } from 'rxjs';
-import { catchError, tap, map } from 'rxjs/operators';
+import { catchError, tap, map, switchMap } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { IndexedDBService } from './indexeddb.service';
 
 export interface Transaction {
   id?: string;
@@ -29,16 +30,44 @@ export interface CreateCustomer {
   providedIn: 'root'
 })
 export class ApiService {
+  syncOfflineTransactions(): Observable<any> {
+    return from(this.indexedDBService.getTransactions()).pipe(
+      switchMap((offlineTransactions: any[]) => {
+        if (offlineTransactions.length === 0) {
+          return of(null);
+        }
+
+        const syncRequests = offlineTransactions.map(transaction =>
+          this.http.post(this.apiUrl, transaction)
+        );
+
+        return new Observable(observer => {
+          Promise.all(syncRequests)
+            .then(() => this.indexedDBService.clearTransactions())
+            .then(() => {
+              observer.next('All offline transactions synced');
+              observer.complete();
+            })
+            .catch(error => {
+              console.error('Error syncing offline transactions:', error);
+              observer.error(error);
+            });
+        });
+      })
+    );
+  }
   private apiUrl = environment.apiUrl;
   private dbName = 'OfflineStore';
   private db: IDBDatabase | null = null;
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private indexedDBService: IndexedDBService) {
+
     this.initIndexedDB();
+    
   }
 
   private initIndexedDB(): void {
-    const request = indexedDB.open(this.dbName, 1);
+    const request = indexedDB.open(this.dbName);
 
     request.onerror = (event) => {
       console.error('IndexedDB error:', event);
@@ -120,7 +149,7 @@ export class ApiService {
     if (name) {
       params = params.append('name', name);
     }
-    return this.handleRequest<Transaction[]>('api/transactions', params);
+    return this.handleRequest<Transaction[]>('api/transactions/name', params);
   }
 
   createTransaction(transaction: Transaction): Observable<Transaction> {

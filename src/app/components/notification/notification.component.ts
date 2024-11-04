@@ -9,7 +9,7 @@ import { NotificationService, Notification } from '../../services/notification.s
 })
 export class NotificationComponent implements OnInit, OnDestroy {
   notifications: Notification[] = [];
-  private subscription: Subscription;
+  private subscription: Subscription | undefined;
 
   constructor(private notificationService: NotificationService) {}
 

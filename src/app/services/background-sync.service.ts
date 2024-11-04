@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
-import { TransactionService } from './transaction.service';
+import { ApiService } from './api.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class BackgroundSyncService {
-  constructor(private transactionService: TransactionService) {
+  constructor(private transactionService: ApiService) {
     this.setupNetworkStatusListener();
   }
 

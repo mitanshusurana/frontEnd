@@ -20,9 +20,7 @@ import { ApiService } from './services/api.service';
 @NgModule({
   declarations: [
     AppComponent,
-    LoginComponent,
-    NavigationComponent,
-    NotificationComponent
+     NotificationComponent
   ],
   imports: [
     BrowserModule,
