@@ -2,12 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, from, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
-  private apiUrl = 'https://your-api-url.com/api'; // Replace with your actual API URL
+  private apiUrl = environment.apiUrl;
   private dbName = 'OfflineStore';
   private db: IDBDatabase | null = null;
 
@@ -141,4 +142,10 @@ export class ApiService {
   addLedger(ledger: any): Observable<any> {
     return this.handleRequest<any>('ledgers', 'POST', ledger);
   }
+
+  // Add any other existing methods here
+  // For example:
+  // getSpecificData(id: string): Observable<any> {
+  //   return this.http.get<any>(`${this.apiUrl}/specific-endpoint/${id}`);
+  // }
 }
