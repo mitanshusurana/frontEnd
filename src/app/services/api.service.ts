@@ -1,72 +1,144 @@
-
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { environment } from '../../environments/environment';
-
-export interface Transaction {
-  id?: string;
-  date: string;
-  transaction: string;
-  ledgerName: string;
-  stockName?: string;
-  netWeight?: number;
-  touch?: number;
-  rate?: number;
-  pure?: number;
-  cash?: number;
-  amount?: number;
-  comments?: string;
-}
-
-export interface CreateCustomer {
-  customerName: string;
-  openingCashBalance: number;
-  openingMetalBalance: number;
-}
+import { HttpClient } from '@angular/common/http';
+import { Observable, from, of } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
-  private apiUrl = environment.apiUrl;
+  private apiUrl = 'https://your-api-url.com/api'; // Replace with your actual API URL
+  private dbName = 'OfflineStore';
+  private db: IDBDatabase | null = null;
 
-  constructor(private http: HttpClient) { }
-
-  getLedgerNames(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.apiUrl}/api/Ledgers`);
+  constructor(private http: HttpClient) {
+    this.initIndexedDB();
   }
 
-  getTransactions(date?: string): Observable<Transaction[]> {
-    let params = new HttpParams();
-    if (date) {
-      params = params.append('date', date);
+  private initIndexedDB(): void {
+    const request = indexedDB.open(this.dbName, 1);
+
+    request.onerror = (event) => {
+      console.error('IndexedDB error:', event);
+    };
+
+    request.onsuccess = (event) => {
+      this.db = (event.target as IDBOpenDBRequest).result;
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+      db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
+      db.createObjectStore('ledgers', { keyPath: 'id' });
+    };
+  }
+
+  // Generic method to handle API requests with offline support
+  private handleRequest<T>(endpoint: string, method: string, data?: any): Observable<T> {
+    if (navigator.onLine) {
+      return this.http.request<T>(method, `${this.apiUrl}/${endpoint}`, { body: data }).pipe(
+        tap(response => this.saveToIndexedDB(endpoint, response)),
+        catchError(error => {
+          console.error('API error:', error);
+          return this.getFromIndexedDB<T>(endpoint);
+        })
+      );
+    } else {
+      return this.getFromIndexedDB<T>(endpoint);
     }
-    return this.http.get<Transaction[]>(`${this.apiUrl}/api/transactions`, { params });
   }
 
-  getTransactionsByName(name?: string): Observable<Transaction[]> {
-    let params = new HttpParams();
-    if (name) {
-      params = params.append('name', name);
+  // Save data to IndexedDB
+  private saveToIndexedDB(storeName: string, data: any): void {
+    if (!this.db) {
+      console.error('IndexedDB not initialized');
+      return;
     }
-    return this.http.get<Transaction[]>(`${this.apiUrl}/api/transactions/name`, { params });
+
+    const transaction = this.db.transaction([storeName], 'readwrite');
+    const store = transaction.objectStore(storeName);
+    store.put(data);
   }
 
-  createTransaction(transaction: Transaction): Observable<any> {
-    return this.http.post(`${this.apiUrl}/api/transactions`, transaction);
+  // Get data from IndexedDB
+  private getFromIndexedDB<T>(storeName: string): Observable<T> {
+    return new Observable(observer => {
+      if (!this.db) {
+        observer.error('IndexedDB not initialized');
+        return;
+      }
+
+      const transaction = this.db.transaction([storeName], 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.getAll();
+
+      request.onerror = () => observer.error(request.error);
+      request.onsuccess = () => {
+        observer.next(request.result as T);
+        observer.complete();
+      };
+    });
   }
 
-  deleteTransaction(id: string): Observable<any> {
-    let params = new HttpParams().append('id', id);
-    return this.http.delete(`${this.apiUrl}/api/transactions`, { params });
+  // Method to sync offline data
+  syncOfflineData(): Observable<any> {
+    if (!navigator.onLine) {
+      return of({ message: 'Device is offline. Will sync when online.' });
+    }
+
+    return new Observable(observer => {
+      if (!this.db) {
+        observer.error('IndexedDB not initialized');
+        return;
+      }
+
+      const transaction = this.db.transaction(['transactions'], 'readwrite');
+      const store = transaction.objectStore('transactions');
+      const request = store.getAll();
+
+      request.onerror = () => observer.error(request.error);
+      request.onsuccess = () => {
+        const offlineData = request.result;
+        if (offlineData.length === 0) {
+          observer.next({ message: 'No offline data to sync.' });
+          observer.complete();
+          return;
+        }
+
+        // Implement your sync logic here
+        // For example, you might want to send each transaction to the server
+        const syncPromises = offlineData.map((data: any) =>
+          this.http.post(`${this.apiUrl}/transactions`, data).toPromise()
+        );
+
+        Promise.all(syncPromises)
+          .then(() => {
+            // Clear synced data from IndexedDB
+            store.clear();
+            observer.next({ message: 'Offline data synced successfully.' });
+            observer.complete();
+          })
+          .catch(error => {
+            observer.error('Error syncing offline data: ' + error);
+          });
+      };
+    });
   }
 
-  createLedger(newLedger: CreateCustomer): Observable<any> {
-    return this.http.post(`${this.apiUrl}/api/Ledgers`, newLedger);
+  // Example methods for transactions and ledgers
+  getTransactions(): Observable<any[]> {
+    return this.handleRequest<any[]>('transactions', 'GET');
   }
 
-  getBalances(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/api/transactions/balances`)
+  addTransaction(transaction: any): Observable<any> {
+    return this.handleRequest<any>('transactions', 'POST', transaction);
+  }
+
+  getLedgers(): Observable<any[]> {
+    return this.handleRequest<any[]>('ledgers', 'GET');
+  }
+
+  addLedger(ledger: any): Observable<any> {
+    return this.handleRequest<any>('ledgers', 'POST', ledger);
   }
 }

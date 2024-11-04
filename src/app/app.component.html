@@ -1,14 +1,16 @@
 <div class="app-container">
   <header>
-    <h1>Student Festival Registration</h1>
+    <h1>Surana Gems</h1>
     <div class="network-status" [ngClass]="{'online': isOnline, 'offline': !isOnline}">
       {{ isOnline ? 'Online' : 'Offline' }}
     </div>
   </header>
 
-  <main>
-    <!-- Your main content goes here -->
-  </main>
+  <nav>
+    <app-navigation></app-navigation>
+  </nav>
 
-  <app-notification></app-notification>
+  <main>
+    <router-outlet></router-outlet>
+  </main>
 </div>

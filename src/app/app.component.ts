@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { NotificationService } from './services/notification.service';
+import { ApiService } from './services/api.service';
 
 @Component({
   selector: 'app-root',
@@ -9,7 +9,7 @@ import { NotificationService } from './services/notification.service';
 export class AppComponent implements OnInit {
   isOnline: boolean = navigator.onLine;
 
-  constructor(private notificationService: NotificationService) {}
+  constructor(private apiService: ApiService) {}
 
   ngOnInit() {
     this.setupNetworkListeners();
@@ -18,12 +18,18 @@ export class AppComponent implements OnInit {
   private setupNetworkListeners() {
     window.addEventListener('online', () => {
       this.isOnline = true;
-      this.notificationService.showNotification('You are back online!', 'success');
+      this.syncOfflineData();
     });
 
     window.addEventListener('offline', () => {
       this.isOnline = false;
-      this.notificationService.showNotification('You are offline. Changes will be synced when you\'re back online.', 'info');
+    });
+  }
+
+  private syncOfflineData() {
+    this.apiService.syncOfflineData().subscribe({
+      next: (result) => console.log('Sync result:', result),
+      error: (error) => console.error('Sync error:', error)
     });
   }
 }
