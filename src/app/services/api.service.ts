@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, from, of } from 'rxjs';
-import { catchError, tap } from 'rxjs/operators';
+import { catchError, tap, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
 @Injectable({
@@ -32,21 +32,36 @@ export class ApiService {
       db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
       db.createObjectStore('customers', { keyPath: 'id', autoIncrement: true });
       db.createObjectStore('balances', { keyPath: 'id' });
+      db.createObjectStore('pendingTransactions', { keyPath: 'id', autoIncrement: true });
+      db.createObjectStore('pendingCustomers', { keyPath: 'id', autoIncrement: true });
     };
   }
 
-  // Generic method to handle API requests with offline support
   private handleRequest<T>(endpoint: string, method: string, data?: any): Observable<T> {
     if (navigator.onLine) {
       return this.http.request<T>(method, `${this.apiUrl}/${endpoint}`, { body: data }).pipe(
-        tap(response => this.saveToIndexedDB(endpoint, response)),
+        tap(response => {
+          if (method === 'GET') {
+            this.saveToIndexedDB(endpoint, response);
+          }
+        }),
         catchError(error => {
           console.error('API error:', error);
-          return this.getFromIndexedDB<T>(endpoint);
+          if (method === 'GET') {
+            return this.getFromIndexedDB<T>(endpoint);
+          } else {
+            throw error;
+          }
         })
       );
     } else {
-      return this.getFromIndexedDB<T>(endpoint);
+      if (method === 'GET') {
+        return this.getFromIndexedDB<T>(endpoint);
+      } else if (method === 'POST') {
+        return this.saveOfflineData(endpoint, data);
+      } else {
+        return of(null as T);
+      }
     }
   }
 
@@ -58,7 +73,12 @@ export class ApiService {
 
     const transaction = this.db.transaction([storeName], 'readwrite');
     const store = transaction.objectStore(storeName);
-    store.put(data);
+    store.clear();
+    if (Array.isArray(data)) {
+      data.forEach(item => store.add(item));
+    } else {
+      store.add(data);
+    }
   }
 
   private getFromIndexedDB<T>(storeName: string): Observable<T> {
@@ -80,7 +100,26 @@ export class ApiService {
     });
   }
 
-  // Existing methods with offline support
+  private saveOfflineData<T>(endpoint: string, data: any): Observable<T> {
+    const storeName = endpoint === 'transactions' ? 'pendingTransactions' : 'pendingCustomers';
+    return new Observable(observer => {
+      if (!this.db) {
+        observer.error('IndexedDB not initialized');
+        return;
+      }
+
+      const transaction = this.db.transaction([storeName], 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.add(data);
+
+      request.onerror = () => observer.error(request.error);
+      request.onsuccess = () => {
+        observer.next({ id: request.result, ...data } as T);
+        observer.complete();
+      };
+    });
+  }
+
   getTransactions(): Observable<any[]> {
     return this.handleRequest<any[]>('transactions', 'GET');
   }
@@ -97,9 +136,6 @@ export class ApiService {
     return this.handleRequest<any[]>('balances', 'GET');
   }
 
-  // Add any other existing methods here, following the same pattern
-
-  // Method to sync offline data
   syncOfflineData(): Observable<any> {
     if (!navigator.onLine) {
       return of({ message: 'Device is offline. Will sync when online.' });
@@ -111,7 +147,7 @@ export class ApiService {
         return;
       }
 
-      const syncStore = (storeName: string) => {
+      const syncStore = (storeName: string, apiEndpoint: string) => {
         return new Promise((resolve, reject) => {
           const transaction = this.db!.transaction([storeName], 'readwrite');
           const store = transaction.objectStore(storeName);
@@ -126,7 +162,7 @@ export class ApiService {
             }
 
             const syncPromises = offlineData.map((data: any) =>
-              this.http.post(`${this.apiUrl}/${storeName}`, data).toPromise()
+              this.http.post(`${this.apiUrl}/${apiEndpoint}`, data).toPromise()
             );
 
             Promise.all(syncPromises)
@@ -142,9 +178,8 @@ export class ApiService {
       };
 
       Promise.all([
-        syncStore('transactions'),
-        syncStore('customers'),
-        syncStore('balances')
+        syncStore('pendingTransactions', 'transactions'),
+        syncStore('pendingCustomers', 'customers')
       ])
         .then(results => {
           observer.next(results);
