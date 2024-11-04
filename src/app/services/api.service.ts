@@ -1,8 +1,29 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
 import { Observable, from, of, throwError } from 'rxjs';
-import { catchError, tap, retry } from 'rxjs/operators';
+import { catchError, tap, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+
+export interface Transaction {
+  id?: string;
+  date: string;
+  transaction: string;
+  ledgerName: string;
+  stockName?: string;
+  netWeight?: number;
+  touch?: number;
+  rate?: number;
+  pure?: number;
+  cash?: number;
+  amount?: number;
+  comments?: string;
+}
+
+export interface CreateCustomer {
+  customerName: string;
+  openingCashBalance: number;
+  openingMetalBalance: number;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -29,33 +50,21 @@ export class ApiService {
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
-      db.createObjectStore('customers', { keyPath: 'id', autoIncrement: true });
-      db.createObjectStore('balances', { keyPath: 'id' });
+      db.createObjectStore('ledgerNames', { keyPath: 'id', autoIncrement: true });
+      db.createObjectStore('transactions', { keyPath: 'id' });
       db.createObjectStore('pendingTransactions', { keyPath: 'id', autoIncrement: true });
       db.createObjectStore('pendingCustomers', { keyPath: 'id', autoIncrement: true });
     };
   }
 
-  private handleRequest<T>(endpoint: string, method: string, data?: any): Observable<T> {
+  private handleRequest<T>(endpoint: string, params?: HttpParams): Observable<T> {
     if (navigator.onLine) {
-      return this.http.request<T>(method, `${this.apiUrl}/${endpoint}`, { body: data }).pipe(
-        retry(3),
-        tap(response => {
-          if (method === 'GET') {
-            this.saveToIndexedDB(endpoint, response);
-          }
-        }),
+      return this.http.get<T>(`${this.apiUrl}/${endpoint}`, { params }).pipe(
+        tap(response => this.saveToIndexedDB(endpoint, response)),
         catchError(this.handleError)
       );
     } else {
-      if (method === 'GET') {
-        return this.getFromIndexedDB<T>(endpoint);
-      } else if (method === 'POST') {
-        return this.saveOfflineData(endpoint, data);
-      } else {
-        return throwError('Operation not supported offline');
-      }
+      return this.getFromIndexedDB<T>(endpoint);
     }
   }
 
@@ -94,8 +103,47 @@ export class ApiService {
     });
   }
 
-  private saveOfflineData<T>(endpoint: string, data: any): Observable<T> {
-    const storeName = endpoint === 'transactions' ? 'pendingTransactions' : 'pendingCustomers';
+  getLedgerNames(): Observable<string[]> {
+    return this.handleRequest<string[]>('api/Ledgers');
+  }
+
+  getTransactions(date?: string): Observable<Transaction[]> {
+    let params = new HttpParams();
+    if (date) {
+      params = params.append('date', date);
+    }
+    return this.handleRequest<Transaction[]>('api/transactions', params);
+  }
+
+  getTransactionsByName(name?: string): Observable<Transaction[]> {
+    let params = new HttpParams();
+    if (name) {
+      params = params.append('name', name);
+    }
+    return this.handleRequest<Transaction[]>('api/transactions', params);
+  }
+
+  createTransaction(transaction: Transaction): Observable<Transaction> {
+    if (navigator.onLine) {
+      return this.http.post<Transaction>(`${this.apiUrl}/api/transactions`, transaction).pipe(
+        catchError(this.handleError)
+      );
+    } else {
+      return this.saveOfflineData('pendingTransactions', transaction);
+    }
+  }
+
+  createCustomer(customer: CreateCustomer): Observable<CreateCustomer> {
+    if (navigator.onLine) {
+      return this.http.post<CreateCustomer>(`${this.apiUrl}/api/customers`, customer).pipe(
+        catchError(this.handleError)
+      );
+    } else {
+      return this.saveOfflineData('pendingCustomers', customer);
+    }
+  }
+
+  private saveOfflineData<T>(storeName: string, data: T): Observable<T> {
     return new Observable(observer => {
       if (!this.db) {
         observer.error('IndexedDB not initialized');
@@ -108,28 +156,10 @@ export class ApiService {
 
       request.onerror = () => observer.error(request.error);
       request.onsuccess = () => {
-        observer.next({ id: request.result, ...data } as T);
+        observer.next({ ...data, id: request.result } as T);
         observer.complete();
       };
     });
-  }
-
-  getTransactions(): Observable<any[]> {
-    return this.handleRequest<any[]>('transactions', 'GET');
-  }
-
-  createTransaction(transaction: any): Observable<any> {
-    // TODO: Adapt the transaction data structure as needed before sending to the server
-    return this.handleRequest<any>('transactions', 'POST', transaction);
-  }
-
-  createCustomer(customer: any): Observable<any> {
-    // TODO: Adapt the customer data structure as needed before sending to the server
-    return this.handleRequest<any>('customers', 'POST', customer);
-  }
-
-  getBalances(): Observable<any[]> {
-    return this.handleRequest<any[]>('balances', 'GET');
   }
 
   syncOfflineData(): Observable<any> {
@@ -158,12 +188,7 @@ export class ApiService {
             }
 
             const syncPromises = offlineData.map((data: any) =>
-              this.http.post(`${this.apiUrl}/${apiEndpoint}`, data)
-                .pipe(
-                  retry(3),
-                  catchError(this.handleError)
-                )
-                .toPromise()
+              this.http.post(`${this.apiUrl}/${apiEndpoint}`, data).toPromise()
             );
 
             Promise.all(syncPromises)
@@ -179,8 +204,8 @@ export class ApiService {
       };
 
       Promise.all([
-        syncStore('pendingTransactions', 'transactions'),
-        syncStore('pendingCustomers', 'customers')
+        syncStore('pendingTransactions', 'api/transactions'),
+        syncStore('pendingCustomers', 'api/customers')
       ])
         .then(results => {
           observer.next(results);
@@ -195,14 +220,11 @@ export class ApiService {
   private handleError(error: HttpErrorResponse) {
     let errorMessage = 'An error occurred';
     if (error.error instanceof ErrorEvent) {
-      // Client-side error
       errorMessage = `Error: ${error.error.message}`;
     } else {
-      // Server-side error
       errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
     }
     console.error(errorMessage);
-    // TODO: Implement user notification here (e.g., using a toast service)
     return throwError(errorMessage);
   }
 }
