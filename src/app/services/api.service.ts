@@ -30,7 +30,8 @@ export class ApiService {
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
-      db.createObjectStore('ledgers', { keyPath: 'id' });
+      db.createObjectStore('customers', { keyPath: 'id', autoIncrement: true });
+      db.createObjectStore('balances', { keyPath: 'id' });
     };
   }
 
@@ -49,7 +50,6 @@ export class ApiService {
     }
   }
 
-  // Save data to IndexedDB
   private saveToIndexedDB(storeName: string, data: any): void {
     if (!this.db) {
       console.error('IndexedDB not initialized');
@@ -61,7 +61,6 @@ export class ApiService {
     store.put(data);
   }
 
-  // Get data from IndexedDB
   private getFromIndexedDB<T>(storeName: string): Observable<T> {
     return new Observable(observer => {
       if (!this.db) {
@@ -81,6 +80,25 @@ export class ApiService {
     });
   }
 
+  // Existing methods with offline support
+  getTransactions(): Observable<any[]> {
+    return this.handleRequest<any[]>('transactions', 'GET');
+  }
+
+  createTransaction(transaction: any): Observable<any> {
+    return this.handleRequest<any>('transactions', 'POST', transaction);
+  }
+
+  createCustomer(customer: any): Observable<any> {
+    return this.handleRequest<any>('customers', 'POST', customer);
+  }
+
+  getBalances(): Observable<any[]> {
+    return this.handleRequest<any[]>('balances', 'GET');
+  }
+
+  // Add any other existing methods here, following the same pattern
+
   // Method to sync offline data
   syncOfflineData(): Observable<any> {
     if (!navigator.onLine) {
@@ -93,59 +111,48 @@ export class ApiService {
         return;
       }
 
-      const transaction = this.db.transaction(['transactions'], 'readwrite');
-      const store = transaction.objectStore('transactions');
-      const request = store.getAll();
+      const syncStore = (storeName: string) => {
+        return new Promise((resolve, reject) => {
+          const transaction = this.db!.transaction([storeName], 'readwrite');
+          const store = transaction.objectStore(storeName);
+          const request = store.getAll();
 
-      request.onerror = () => observer.error(request.error);
-      request.onsuccess = () => {
-        const offlineData = request.result;
-        if (offlineData.length === 0) {
-          observer.next({ message: 'No offline data to sync.' });
-          observer.complete();
-          return;
-        }
+          request.onerror = () => reject(request.error);
+          request.onsuccess = () => {
+            const offlineData = request.result;
+            if (offlineData.length === 0) {
+              resolve({ message: `No offline data to sync for ${storeName}.` });
+              return;
+            }
 
-        // Implement your sync logic here
-        // For example, you might want to send each transaction to the server
-        const syncPromises = offlineData.map((data: any) =>
-          this.http.post(`${this.apiUrl}/transactions`, data).toPromise()
-        );
+            const syncPromises = offlineData.map((data: any) =>
+              this.http.post(`${this.apiUrl}/${storeName}`, data).toPromise()
+            );
 
-        Promise.all(syncPromises)
-          .then(() => {
-            // Clear synced data from IndexedDB
-            store.clear();
-            observer.next({ message: 'Offline data synced successfully.' });
-            observer.complete();
-          })
-          .catch(error => {
-            observer.error('Error syncing offline data: ' + error);
-          });
+            Promise.all(syncPromises)
+              .then(() => {
+                store.clear();
+                resolve({ message: `${storeName} synced successfully.` });
+              })
+              .catch(error => {
+                reject(`Error syncing ${storeName}: ${error}`);
+              });
+          };
+        });
       };
+
+      Promise.all([
+        syncStore('transactions'),
+        syncStore('customers'),
+        syncStore('balances')
+      ])
+        .then(results => {
+          observer.next(results);
+          observer.complete();
+        })
+        .catch(error => {
+          observer.error(error);
+        });
     });
   }
-
-  // Example methods for transactions and ledgers
-  getTransactions(): Observable<any[]> {
-    return this.handleRequest<any[]>('transactions', 'GET');
-  }
-
-  addTransaction(transaction: any): Observable<any> {
-    return this.handleRequest<any>('transactions', 'POST', transaction);
-  }
-
-  getLedgers(): Observable<any[]> {
-    return this.handleRequest<any[]>('ledgers', 'GET');
-  }
-
-  addLedger(ledger: any): Observable<any> {
-    return this.handleRequest<any>('ledgers', 'POST', ledger);
-  }
-
-  // Add any other existing methods here
-  // For example:
-  // getSpecificData(id: string): Observable<any> {
-  //   return this.http.get<any>(`${this.apiUrl}/specific-endpoint/${id}`);
-  // }
 }
