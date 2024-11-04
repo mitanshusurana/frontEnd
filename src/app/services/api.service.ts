@@ -53,7 +53,7 @@ export class ApiService {
       db.createObjectStore('ledgerNames', { keyPath: 'id', autoIncrement: true });
       db.createObjectStore('transactions', { keyPath: 'id' });
       db.createObjectStore('pendingTransactions', { keyPath: 'id', autoIncrement: true });
-      db.createObjectStore('pendingCustomers', { keyPath: 'id', autoIncrement: true });
+      db.createObjectStore('pendingLedgers', { keyPath: 'id', autoIncrement: true });
     };
   }
 
@@ -133,14 +133,29 @@ export class ApiService {
     }
   }
 
-  createCustomer(customer: CreateCustomer): Observable<CreateCustomer> {
+  deleteTransaction(id: string): Observable<any> {
     if (navigator.onLine) {
-      return this.http.post<CreateCustomer>(`${this.apiUrl}/api/customers`, customer).pipe(
+      let params = new HttpParams().append('id', id);
+      return this.http.delete(`${this.apiUrl}/api/transactions`, { params }).pipe(
         catchError(this.handleError)
       );
     } else {
-      return this.saveOfflineData('pendingCustomers', customer);
+      return throwError('Cannot delete transactions while offline');
     }
+  }
+
+  createLedger(newLedger: CreateCustomer): Observable<any> {
+    if (navigator.onLine) {
+      return this.http.post(`${this.apiUrl}/api/Ledgers`, newLedger).pipe(
+        catchError(this.handleError)
+      );
+    } else {
+      return this.saveOfflineData('pendingLedgers', newLedger);
+    }
+  }
+
+  getBalances(): Observable<any> {
+    return this.handleRequest<any>('api/transactions/balances');
   }
 
   private saveOfflineData<T>(storeName: string, data: T): Observable<T> {
@@ -205,7 +220,7 @@ export class ApiService {
 
       Promise.all([
         syncStore('pendingTransactions', 'api/transactions'),
-        syncStore('pendingCustomers', 'api/customers')
+        syncStore('pendingLedgers', 'api/Ledgers')
       ])
         .then(results => {
           observer.next(results);
