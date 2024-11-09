@@ -5,7 +5,7 @@ import { Injectable } from '@angular/core';
 })
 export class IndexedDBService {
   private dbName = 'OfflineStore';
-  private dbVersion = 1;
+  private dbVersion = 2;
   private db: IDBDatabase | null = null;
 
   constructor() {
@@ -25,35 +25,46 @@ export class IndexedDBService {
 
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
-      db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
+      if (!db.objectStoreNames.contains('transactions')) {
+        db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains('ledgerNames')) {
+        db.createObjectStore('ledgerNames', { keyPath: 'id', autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains('pendingTransactions')) {
+        db.createObjectStore('pendingTransactions', { keyPath: 'id', autoIncrement: true });
+      }
+      if (!db.objectStoreNames.contains('pendingLedgers')) {
+        db.createObjectStore('pendingLedgers', { keyPath: 'id', autoIncrement: true });
+      }
     };
   }
 
-  addTransaction(transaction: any): Promise<void> {
+  addData(storeName: string, data: any): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject('Database not initialized');
         return;
       }
 
-      const txn = this.db.transaction('transactions', 'readwrite');
-      const store = txn.objectStore('transactions');
-      const request = store.add(transaction);
+      const txn = this.db.transaction(storeName, 'readwrite');
+      const store = txn.objectStore(storeName);
+      const request = Array.isArray(data) ? data.map(item => store.add(item)) : store.add(data);
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve();
+      txn.oncomplete = () => resolve();
+      txn.onerror = () => reject(txn.error);
     });
   }
 
-  getTransactions(): Promise<any[]> {
+  getData(storeName: string): Promise<any> {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject('Database not initialized');
         return;
       }
 
-      const txn = this.db.transaction('transactions', 'readonly');
-      const store = txn.objectStore('transactions');
+      const txn = this.db.transaction(storeName, 'readonly');
+      const store = txn.objectStore(storeName);
       const request = store.getAll();
 
       request.onerror = () => reject(request.error);
@@ -61,15 +72,15 @@ export class IndexedDBService {
     });
   }
 
-  clearTransactions(): Promise<void> {
+  clearStore(storeName: string): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject('Database not initialized');
         return;
       }
 
-      const txn = this.db.transaction('transactions', 'readwrite');
-      const store = txn.objectStore('transactions');
+      const txn = this.db.transaction(storeName, 'readwrite');
+      const store = txn.objectStore(storeName);
       const request = store.clear();
 
       request.onerror = () => reject(request.error);
