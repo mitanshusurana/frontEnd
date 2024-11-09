@@ -15,7 +15,7 @@ export interface Transaction {
   touch?: number;
   rate?: number;
   pure?: number;
-  cash?: number;
+ cash?: number;
   amount?: number;
   comments?: string;
 }
@@ -30,20 +30,29 @@ export interface CreateCustomer {
   providedIn: 'root'
 })
 export class ApiService {
+  private apiUrl = environment.apiUrl;
+
+  constructor(private http: HttpClient, private indexedDBService: IndexedDBService) {}
+
   syncOfflineTransactions(): Observable<any> {
     return from(this.indexedDBService.getTransactions()).pipe(
-      switchMap((offlineTransactions: any[]) => {
+      switchMap((offlineTransactions: Transaction[]) => {
         if (offlineTransactions.length === 0) {
           return of(null);
         }
 
         const syncRequests = offlineTransactions.map(transaction =>
-          this.http.post(this.apiUrl, transaction)
+          this.http.post(`${this.apiUrl}/api/transactions`, transaction).pipe(
+            catchError(error => {
+              console.error('Error syncing transaction:', error);
+              return throwError(error);
+            })
+          )
         );
 
         return new Observable(observer => {
           Promise.all(syncRequests)
-            .then(() => this.indexedDBService.clearTransactions())
+            .then(() => this.indexedDBService.clearStore('pendingTransactions'))
             .then(() => {
               observer.next('All offline transactions synced');
               observer.complete();
@@ -55,80 +64,6 @@ export class ApiService {
         });
       })
     );
-  }
-  private apiUrl = environment.apiUrl;
-  private dbName = 'OfflineStore';
-  private db: IDBDatabase | null = null;
-
-  constructor(private http: HttpClient, private indexedDBService: IndexedDBService) {
-
-    this.initIndexedDB();
-    
-  }
-
-  private initIndexedDB(): void {
-    const request = indexedDB.open(this.dbName);
-
-    request.onerror = (event) => {
-      console.error('IndexedDB error:', event);
-    };
-
-    request.onsuccess = (event) => {
-      this.db = (event.target as IDBOpenDBRequest).result;
-    };
-
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      db.createObjectStore('ledgerNames', { keyPath: 'id', autoIncrement: true });
-      db.createObjectStore('pendingTransactions', { keyPath: 'id', autoIncrement: true });
-      db.createObjectStore('pendingLedgers', { keyPath: 'id', autoIncrement: true });
-    };
-  }
-
-  private handleRequest<T>(endpoint: string, params?: HttpParams): Observable<T> {
-    if (navigator.onLine) {
-      return this.http.get<T>(`${this.apiUrl}/${endpoint}`, { params }).pipe(
-        tap(response => this.saveToIndexedDB(endpoint, response)),
-        catchError(this.handleError)
-      );
-    } else {
-      return this.getFromIndexedDB<T>(endpoint);
-    }
-  }
-
-  private saveToIndexedDB(storeName: string, data: any): void {
-    if (!this.db) {
-      console.error('IndexedDB not initialized');
-      return;
-    }
-
-    const transaction = this.db.transaction([storeName], 'readwrite');
-    const store = transaction.objectStore(storeName);
-    
-    if (Array.isArray(data)) {
-      data.forEach(item => store.put(item));
-    } else {
-      store.put(data);
-    }
-  }
-
-  private getFromIndexedDB<T>(storeName: string): Observable<T> {
-    return new Observable(observer => {
-      if (!this.db) {
-        observer.error('IndexedDB not initialized');
-        return;
-      }
-
-      const transaction = this.db.transaction([storeName], 'readonly');
-      const store = transaction.objectStore(storeName);
-      const request = store.getAll();
-
-      request.onerror = () => observer.error(request.error);
-      request.onsuccess = () => {
-        observer.next(request.result as T);
-        observer.complete();
-      };
-    });
   }
 
   getLedgerNames(): Observable<string[]> {
@@ -188,75 +123,34 @@ export class ApiService {
 
   private saveOfflineData<T>(storeName: string, data: T): Observable<T> {
     return new Observable(observer => {
-      if (!this.db) {
-        observer.error('IndexedDB not initialized');
-        return;
-      }
-
-      const transaction = this.db.transaction([storeName], 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.add(data);
-
-      request.onerror = () => observer.error(request.error);
-      request.onsuccess = () => {
-        observer.next({ ...data, id: request.result } as T);
-        observer.complete();
-      };
+      this.indexedDBService.addData(storeName, data)
+        .then(() => {
+          observer.next(data);
+          observer.complete();
+        })
+        .catch(error => observer.error(error));
     });
   }
 
-  syncOfflineData(): Observable<any> {
-    if (!navigator.onLine) {
-      return throwError('Device is offline. Will sync when online.');
+  private handleRequest<T>(endpoint: string, params?: HttpParams): Observable<T> {
+    if (navigator.onLine) {
+      return this.http.get<T>(`${this.apiUrl}/${endpoint}`, { params }).pipe(
+        tap(response => this.indexedDBService.addData(endpoint, response)),
+        catchError(this.handleError)
+      );
+    } else {
+      return this.getFromIndexedDB<T>(endpoint);
     }
+  }
 
+  private getFromIndexedDB<T>(storeName: string): Observable<T> {
     return new Observable(observer => {
-      if (!this.db) {
-        observer.error('IndexedDB not initialized');
-        return;
-      }
-
-      const syncStore = (storeName: string, apiEndpoint: string) => {
-        return new Promise((resolve, reject) => {
-          const transaction = this.db!.transaction([storeName], 'readwrite');
-          const store = transaction.objectStore(storeName);
-          const request = store.getAll();
-
-          request.onerror = () => reject(request.error);
-          request.onsuccess = () => {
-            const offlineData = request.result;
-            if (offlineData.length === 0) {
-              resolve({ message: `No offline data to sync for ${storeName}.` });
-              return;
-            }
-
-            const syncPromises = offlineData.map((data: any) =>
-              this.http.post(`${this.apiUrl}/${apiEndpoint}`, data).toPromise()
-            );
-
-            Promise.all(syncPromises)
-              .then(() => {
-                store.clear();
-                resolve({ message: `${storeName} synced successfully.` });
-              })
-              .catch(error => {
-                reject(`Error syncing ${storeName}: ${error}`);
-              });
-          };
-        });
-      };
-
-      Promise.all([
-        syncStore('pendingTransactions', 'api/transactions'),
-        syncStore('pendingLedgers', 'api/Ledgers')
-      ])
-        .then(results => {
-          observer.next(results);
+      this.indexedDBService.getData(storeName)
+        .then(data => {
+          observer.next(data as T);
           observer.complete();
         })
-        .catch(error => {
-          observer.error(error);
-        });
+        .catch(error => observer.error(error));
     });
   }
 
