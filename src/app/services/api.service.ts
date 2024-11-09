@@ -80,7 +80,6 @@ export class ApiService {
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       db.createObjectStore('ledgerNames', { keyPath: 'id', autoIncrement: true });
-      db.createObjectStore('transactions', { keyPath: 'id' });
       db.createObjectStore('pendingTransactions', { keyPath: 'id', autoIncrement: true });
       db.createObjectStore('pendingLedgers', { keyPath: 'id', autoIncrement: true });
     };
