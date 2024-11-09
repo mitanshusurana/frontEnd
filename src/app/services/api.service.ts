@@ -42,7 +42,7 @@ export class ApiService {
         }
 
         const syncRequests = offlineTransactions.map(transaction =>
-          this.http.post(this.apiUrl, transaction)
+          this.http.post(`${this.apiUrl}/transactions`, transaction)
         );
 
         return new Observable(observer => {
@@ -91,8 +91,36 @@ export class ApiService {
     return throwError(() => new Error('Something bad happened; please try again later.'));
   }
 
-  // Add other methods as needed (e.g., CRUD operations for transactions, ledgers, etc.)
   getLedgerNames(): Observable<string[]> {
     return this.handleRequest<string[]>('ledgerNames');
+  }
+
+  getTransactions(): Observable<Transaction[]> {
+    return this.handleRequest<Transaction[]>('transactions');
+  }
+
+  createTransaction(transaction: Transaction): Observable<Transaction> {
+    if (navigator.onLine) {
+      return this.http.post<Transaction>(`${this.apiUrl}/transactions`, transaction).pipe(
+        tap(newTransaction => this.saveToIndexedDB('transactions', newTransaction)),
+        catchError(this.handleError)
+      );
+    } else {
+      return from(this.indexedDBService.addItem('pendingTransactions', transaction)).pipe(
+        map(() => transaction)
+      );
+    }
+  }
+
+  createCustomer(customer: CreateCustomer): Observable<CreateCustomer> {
+    if (navigator.onLine) {
+      return this.http.post<CreateCustomer>(`${this.apiUrl}/customers`, customer).pipe(
+        catchError(this.handleError)
+      );
+    } else {
+      return from(this.indexedDBService.addItem('pendingLedgers', customer)).pipe(
+        map(() => customer)
+      );
+    }
   }
 }
