@@ -4,7 +4,7 @@ import { Injectable } from '@angular/core';
   providedIn: 'root'
 })
 export class IndexedDBService {
-  private dbName = 'OfflineTransactionsDB';
+  private dbName = 'OfflineStore';
   private dbVersion = 1;
   private db: IDBDatabase | null = null;
 
