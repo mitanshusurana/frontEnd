@@ -1,13 +1,35 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
+import { ApiService } from './services/api.service';
 
 @Component({
   selector: 'app-root',
-  standalone: true,
-  imports: [RouterOutlet],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+  styleUrls: ['./app.component.scss']
 })
-export class AppComponent {
-  title = 'suranagems';
+export class AppComponent implements OnInit {
+  isOnline: boolean = navigator.onLine;
+
+  constructor(private apiService: ApiService) {}
+
+  ngOnInit() {
+    this.setupNetworkListeners();
+  }
+
+  private setupNetworkListeners() {
+    window.addEventListener('online', () => {
+      this.isOnline = true;
+      this.syncOfflineData();
+    });
+
+    window.addEventListener('offline', () => {
+      this.isOnline = false;
+    });
+  }
+
+  private syncOfflineData() {
+    this.apiService.syncOfflineData().subscribe({
+      next: (result) => console.log('Sync result:', result),
+      error: (error) => console.error('Sync error:', error)
+    });
+  }
 }

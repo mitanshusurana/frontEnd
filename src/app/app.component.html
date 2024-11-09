@@ -1,1 +1,13 @@
-<router-outlet />
+<div class="app-container">
+  <header>
+    <h1>Surana Gems</h1>
+    <div class="network-status" [ngClass]="{'online': isOnline, 'offline': !isOnline}">
+      {{ isOnline ? 'Online' : 'Offline' }}
+    </div>
+  </header>
+
+
+  <main>
+    <router-outlet></router-outlet>
+  </main>
+</div>

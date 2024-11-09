@@ -14,10 +14,13 @@ import { routes } from './app.routes';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 
+import { NotificationComponent } from './components/notification/notification.component';
+import { ApiService } from './services/api.service';
+
 @NgModule({
   declarations: [
-    LoginComponent,
-    NavigationComponent
+    AppComponent,
+     NotificationComponent
   ],
   imports: [
     BrowserModule,
@@ -28,7 +31,11 @@ import { MatIconModule } from '@angular/material/icon';
     MatIconModule,
     RouterModule.forRoot(routes)
   ],
-  providers: [AuthGuard, AuthService],
+  providers: [
+    AuthGuard,
+    AuthService,
+    ApiService
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
