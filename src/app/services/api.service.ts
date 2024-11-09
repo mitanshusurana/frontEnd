@@ -15,7 +15,7 @@ export interface Transaction {
   touch?: number;
   rate?: number;
   pure?: number;
- cash?: number;
+  cash?: number;
   amount?: number;
   comments?: string;
 }
@@ -32,27 +32,33 @@ export interface CreateCustomer {
 export class ApiService {
   private apiUrl = environment.apiUrl;
 
-  constructor(private http: HttpClient, private indexedDBService: IndexedDBService) {}
+  constructor(private http: HttpClient, private indexedDBService: IndexedDBService) {
+    this.checkOnlineStatus();
+  }
+
+  private checkOnlineStatus(): void {
+    window.addEventListener('online', () => this.syncOfflineTransactions().subscribe());
+  }
 
   syncOfflineTransactions(): Observable<any> {
-    return from(this.indexedDBService.getTransactions()).pipe(
-      switchMap((offlineTransactions: Transaction[]) => {
-        if (offlineTransactions.length === 0) {
+    return from(this.indexedDBService.getPendingTransactions()).pipe(
+      switchMap((pendingTransactions: Transaction[]) => {
+        if (pendingTransactions.length === 0) {
           return of(null);
         }
 
-        const syncRequests = offlineTransactions.map(transaction =>
+        const syncRequests = pendingTransactions.map(transaction =>
           this.http.post(`${this.apiUrl}/api/transactions`, transaction).pipe(
             catchError(error => {
               console.error('Error syncing transaction:', error);
               return throwError(error);
-            })
+            }),
+            tap(() => this.indexedDBService.removePendingTransaction(transaction.id as number))
           )
         );
 
         return new Observable(observer => {
           Promise.all(syncRequests)
-            .then(() => this.indexedDBService.clearStore('pendingTransactions'))
             .then(() => {
               observer.next('All offline transactions synced');
               observer.complete();
@@ -92,7 +98,13 @@ export class ApiService {
         catchError(this.handleError)
       );
     } else {
-      return this.saveOfflineData('pendingTransactions', transaction);
+      return from(this.indexedDBService.addData('pendingTransactions', transaction)).pipe(
+        map(() => transaction),
+        catchError(error => {
+          console.error('Error saving offline transaction:', error);
+          return throwError('Failed to save transaction offline');
+        })
+      );
     }
   }
 
@@ -113,7 +125,13 @@ export class ApiService {
         catchError(this.handleError)
       );
     } else {
-      return this.saveOfflineData('pendingLedgers', newLedger);
+      return from(this.indexedDBService.addData('pendingLedgers', newLedger)).pipe(
+        map(() => newLedger),
+        catchError(error => {
+          console.error('Error saving offline ledger:', error);
+          return throwError('Failed to save ledger offline');
+        })
+      );
     }
   }
 
@@ -121,16 +139,7 @@ export class ApiService {
     return this.handleRequest<any>('api/transactions/balances');
   }
 
-  private saveOfflineData<T>(storeName: string, data: T): Observable<T> {
-    return new Observable(observer => {
-      this.indexedDBService.addData(storeName, data)
-        .then(() => {
-          observer.next(data);
-          observer.complete();
-        })
-        .catch(error => observer.error(error));
-    });
-  }
+
 
   private handleRequest<T>(endpoint: string, params?: HttpParams): Observable<T> {
     if (navigator.onLine) {
