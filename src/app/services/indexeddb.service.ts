@@ -87,4 +87,25 @@ export class IndexedDBService {
       request.onsuccess = () => resolve();
     });
   }
+
+  getPendingTransactions(): Promise<any[]> {
+    return this.getData('pendingTransactions');
+  }
+
+  removePendingTransaction(id: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject('Database not initialized');
+        return;
+      }
+
+      const txn = this.db.transaction('pendingTransactions', 'readwrite');
+      const store = txn.objectStore('pendingTransactions');
+      const request = store.delete(id);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+    });
+  }
+
 }
