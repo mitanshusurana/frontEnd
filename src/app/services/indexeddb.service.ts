@@ -1,3 +1,4 @@
+
 import { Injectable } from '@angular/core';
 
 @Injectable({
@@ -28,8 +29,8 @@ export class IndexedDBService {
       if (!db.objectStoreNames.contains('transactions')) {
         db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
       }
-      if (!db.objectStoreNames.contains('ledgerNames')) {
-        db.createObjectStore('ledgerNames', { keyPath: 'id', autoIncrement: true });
+      if (!db.objectStoreNames.contains('Ledgers')) {
+        db.createObjectStore('Ledgers', { keyPath: 'id', autoIncrement: true });
       }
       if (!db.objectStoreNames.contains('pendingTransactions')) {
         db.createObjectStore('pendingTransactions', { keyPath: 'id', autoIncrement: true });
@@ -46,13 +47,35 @@ export class IndexedDBService {
         reject('Database not initialized');
         return;
       }
-
+  
       const txn = this.db.transaction(storeName, 'readwrite');
       const store = txn.objectStore(storeName);
-      const request = Array.isArray(data) ? data.map(item => store.add(item)) : store.add(data);
-
+      
+      // Prepare data for insertion
+      const requests: IDBRequest<any>[] = [];
+      
+      if (Array.isArray(data)) {
+        data.forEach(item => {
+          // Remove the id field if it exists
+          const { id, ...itemWithoutId } = item;
+          requests.push(store.add(itemWithoutId));
+        });
+      } else {
+        // Remove the id field if it exists
+        const { id, ...dataWithoutId } = data;
+        requests.push(store.add(dataWithoutId));
+      }
+  
+      // Handle completion and errors
       txn.oncomplete = () => resolve();
       txn.onerror = () => reject(txn.error);
+  
+      // Handle individual request results
+      requests.forEach(request => {
+        request.onerror = (event) => {
+          console.error('Error adding data to IndexedDB:', event);
+        };
+      });
     });
   }
 
@@ -92,7 +115,7 @@ export class IndexedDBService {
     return this.getData('pendingTransactions');
   }
 
-  removePendingTransaction(id: number): Promise<void> {
+  removePendingTransaction(id: any): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.db) {
         reject('Database not initialized');

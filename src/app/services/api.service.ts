@@ -1,3 +1,4 @@
+
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
 import { Observable, from, of, throwError } from 'rxjs';
@@ -30,6 +31,7 @@ export interface CreateCustomer {
   providedIn: 'root'
 })
 export class ApiService {
+  [x: string]: any;
   private apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient, private indexedDBService: IndexedDBService) {
@@ -48,12 +50,12 @@ export class ApiService {
         }
 
         const syncRequests = pendingTransactions.map(transaction =>
-          this.http.post(`${this.apiUrl}/api/transactions`, transaction).pipe(
+          this.http.post(`${this.apiUrl}/transactions`, transaction).pipe(
             catchError(error => {
               console.error('Error syncing transaction:', error);
               return throwError(error);
             }),
-            tap(() => this.indexedDBService.removePendingTransaction(transaction.id as number))
+            tap(() => this.indexedDBService.removePendingTransaction(transaction.id))
           )
         );
 
@@ -73,7 +75,7 @@ export class ApiService {
   }
 
   getLedgerNames(): Observable<string[]> {
-    return this.handleRequest<string[]>('api/Ledgers');
+    return this.handleRequest<string[]>('Ledgers');
   }
 
   getTransactions(date?: string): Observable<Transaction[]> {
@@ -81,7 +83,7 @@ export class ApiService {
     if (date) {
       params = params.append('date', date);
     }
-    return this.handleRequest<Transaction[]>('api/transactions', params);
+    return this.handleRequest<Transaction[]>('transactions',false, params);
   }
 
   getTransactionsByName(name?: string): Observable<Transaction[]> {
@@ -89,12 +91,12 @@ export class ApiService {
     if (name) {
       params = params.append('name', name);
     }
-    return this.handleRequest<Transaction[]>('api/transactions/name', params);
+    return this.handleRequest<Transaction[]>('transactions/name',false, params);
   }
 
   createTransaction(transaction: Transaction): Observable<Transaction> {
     if (navigator.onLine) {
-      return this.http.post<Transaction>(`${this.apiUrl}/api/transactions`, transaction).pipe(
+      return this.http.post<Transaction>(`${this.apiUrl}/transactions`, transaction).pipe(
         catchError(this.handleError)
       );
     } else {
@@ -111,7 +113,7 @@ export class ApiService {
   deleteTransaction(id: string): Observable<any> {
     if (navigator.onLine) {
       let params = new HttpParams().append('id', id);
-      return this.http.delete(`${this.apiUrl}/api/transactions`, { params }).pipe(
+      return this.http.delete(`${this.apiUrl}/transactions`, { params }).pipe(
         catchError(this.handleError)
       );
     } else {
@@ -121,7 +123,7 @@ export class ApiService {
 
   createLedger(newLedger: CreateCustomer): Observable<any> {
     if (navigator.onLine) {
-      return this.http.post(`${this.apiUrl}/api/Ledgers`, newLedger).pipe(
+      return this.http.post(`${this.apiUrl}/Ledgers`, newLedger).pipe(
         catchError(this.handleError)
       );
     } else {
@@ -136,15 +138,17 @@ export class ApiService {
   }
 
   getBalances(): Observable<any> {
-    return this.handleRequest<any>('api/transactions/balances');
+    return this.handleRequest<any>('transactions/balances');
   }
 
-
-
-  private handleRequest<T>(endpoint: string, params?: HttpParams): Observable<T> {
+  private handleRequest<T>(endpoint: string,  shouldSaveToDB: boolean = true,params?: HttpParams,): Observable<T> {
     if (navigator.onLine) {
       return this.http.get<T>(`${this.apiUrl}/${endpoint}`, { params }).pipe(
-        tap(response => this.indexedDBService.addData(endpoint, response)),
+        tap(response => {
+          if (shouldSaveToDB) {
+ this.indexedDBService.addData(endpoint, response);
+          }
+        }),
         catchError(this.handleError)
       );
     } else {
