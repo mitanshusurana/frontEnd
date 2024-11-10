@@ -27,7 +27,7 @@ export class AppComponent implements OnInit {
   }
 
   private syncOfflineData() {
-    this.apiService['syncOfflineData']().subscribe({
+    this.apiService.syncOfflineTransactions().subscribe({
       next: (result: any) => console.log('Sync result:', result),
       error: (error: any) => console.error('Sync error:', error)
     });
